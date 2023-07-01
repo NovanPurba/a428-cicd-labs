@@ -1,24 +1,25 @@
 node {
-    docker.image('node:lts-buster-slim').inside('-p 3000:3000'){
-        stage('Build') {
-            steps {
-                sh 'npm install'
-            }
-        }
-        stage('Test') {
-            steps {
-                sh './jenkins/scripts/test.sh'
-            }
-        }
-        stage('Deliver') {
-            steps {
-                sh './jenkins/scripts/deliver.sh'
-                input message: 'Finished using the web site? (Click "Proceed" to continue)'
-                sh './jenkins/scripts/kill.sh'
-            }
+    stage('Build') {
+        docker.images('python:2-alpine').inside{
+            sh 'python -m py_compile sources/add2vals.py sources/calc.py'
         }
     }
+
+    stage('Test'){
+        docker.image('qnib/pytest').inside{
+            sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
+            junit 'test-reports/results.xml'
+        }
+    }
+    stage('Deliver'){
+        docker.image('cdrx/pyinstaller-linux:python2').inside{
+           sh 'pyinstaller --onefile sources/add2vals.py'  
+           archiveArtifacts 'dist/add2vals'
+        }
+    }
+
 }
+
 
 
 
