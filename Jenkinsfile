@@ -1,22 +1,18 @@
 node {
-    stage('Build') {
-        docker.image('python:2-alpine').inside {
-             sh 'python -m py_compile sources/add2vals.py sources/calc.py'
-             stash(name: 'compiled-results', includes: 'sources/*.py*')
+    docker.image('maven:3.9.0-eclipse-temurin-11').inside{
+        args '-v /root/.m2:/root/.m2'
+        stage('Build'){
+            sh 'mvn -B -DskipTests clean package'
+        }
+        stage('Test'){
+            sh 'mvn test'
+            junit 'target/surefire-reports/*.xml'
+        }
+        stage('Deliver'){
+            sh './jenkins/scripts/deliver.sh'
         }
     }
-    stage('Test'){
-        docker.image('qnib/pytest').inside {
-            sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
-            junit 'test-reports/results.xml'
-        }
-    }
-    stage('Deliver'){
-        docker.image('cdrx/pyinstaller-linux:python2').inside {
-           sh 'pyinstaller --onefile sources/add2vals.py'  
-           archiveArtifacts artifacts : 'dist/add2vals'
-        }
-    }
+    
 }
 
 
